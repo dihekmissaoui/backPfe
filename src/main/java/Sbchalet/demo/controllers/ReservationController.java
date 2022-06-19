@@ -1,10 +1,12 @@
 package Sbchalet.demo.controllers;
 
+import java.net.InetAddress;
 import java.util.List;
 import java.util.Optional;
 
 import org.omg.CosNaming.NamingContextPackage.NotFound;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,6 +30,8 @@ import Sbchalet.demo.services.IChaletService;
 import Sbchalet.demo.services.IEmailSenderService;
 import Sbchalet.demo.services.IReservationService;
 import Sbchalet.demo.services.IUserservice;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
 
 @RestController
 @CrossOrigin(origins = "http://localhost:4200")
@@ -38,6 +42,12 @@ public class ReservationController {
 	private IChaletService chaletService;
 	private IUserservice userService;
 	private IEmailSenderService emailSenderService;
+	
+	@Autowired
+	PasswordEncoder encoder;
+	
+	@Autowired
+	Environment environment;
 
 	@Autowired
 	public void setReservationService(IReservationService reservationService) {
@@ -104,11 +114,21 @@ public class ReservationController {
 					reservationRequest.getDateDeDefin(), reservationRequest.getNbNuites(),
 					reservationRequest.getTotalPrix(), reservationRequest.getNbAdultes(),
 					reservationRequest.getNbEnfant(), reservationRequest.getNbAnimal(), "PENDING", user, chalet);
-
+			
 			reservation = reservationService.save(payload);
-
+			
+			String Url = "http://localhost:4200/app/reservation/"+reservation.getId();
+			
+			String emailBody = EmailConstants.EMAIL_RESERVATION_BODY+" \n "+ Url + " \n "
+//					+"Vous pouvez utiliser l\' email/mot de passe suivants pour vous authentifier \n "
+//					+ "email: "+user.getEmail() + " \n "
+//					+ "mdp: "+reservationRequest.getUser().getPassword()
+			; 
+			
+								
+					;
 			this.emailSenderService.sendEmail(user.getEmail(), EmailConstants.EMAIL_RESERVATION_SUBJECT,
-					EmailConstants.EMAIL_RESERVATION_BODY);
+					emailBody);
 		}
 		return reservation;
 	}
@@ -118,7 +138,7 @@ public class ReservationController {
 		String nom = reservationRequest.getUser().getNom();
 		String prenom = reservationRequest.getUser().getPrenom();
 		String email = reservationRequest.getUser().getEmail();
-		String password = reservationRequest.getUser().getPassword();
+		String password = encoder.encode(reservationRequest.getUser().getPassword());
 
 		User user = new User(userName, nom, prenom, email, password);
 

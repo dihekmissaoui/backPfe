@@ -2,12 +2,15 @@ package Sbchalet.demo.controllers;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 
+import org.omg.CosNaming.NamingContextPackage.NotFound;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.crossstore.ChangeSetPersister.NotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,6 +23,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import Sbchalet.demo.exception.NotfoundException;
+import Sbchalet.demo.exception.UserNotFoundException;
 import Sbchalet.demo.models.ERole;
 import Sbchalet.demo.models.Role;
 import Sbchalet.demo.models.User;
@@ -34,13 +39,11 @@ import Sbchalet.demo.services.IUserservice;
 import Sbchalet.demo.services.UserDetailsImpl;
 import Sbchalet.demo.services.UserServiceImpl;
 
-@CrossOrigin(origins = "*", maxAge = 3600)
+@CrossOrigin(origins = "http://localhost:4200")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
-	@Autowired
-	AuthenticationManager authenticationManager;
-	@Autowired
+ 	@Autowired
 	UserRepository userRepository;
 	@Autowired
 	RoleRepository roleRepository;
@@ -48,10 +51,8 @@ public class AuthController {
 	PasswordEncoder encoder;
 	@Autowired
 	JwtUtils jwtUtils;
-	
+
 	IUserservice userService;
-	
-	
 
 	@Autowired
 	public void setUserServiceImpl(UserServiceImpl userService) {
@@ -62,35 +63,26 @@ public class AuthController {
 	public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 		
 		
-		Authentication authentication = authenticationManager.authenticate(
-				new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
-		
-		SecurityContextHolder.getContext().setAuthentication(authentication);
-		
-		String jwt = jwtUtils.generateJwtToken(authentication);
-
-		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-		
-		List<String> roles = userDetails.getAuthorities().stream().map(item -> item.getAuthority())
-				.collect(Collectors.toList());
-		
-		
-		return ResponseEntity.ok(
-				new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), userDetails.getEmail(), roles));
+		return this.userService.authenticate(loginRequest);
 
 	}
 
 	@PostMapping("/signup")
-	public ResponseEntity<?> registerUser(@RequestBody SignupRequest signUpRequest) {
+	public ResponseEntity<?> registerUser(@RequestBody SignupRequest signUpRequest) throws NotfoundException {
 
 		this.checkForExistance(signUpRequest);
 		User user = generateUser(signUpRequest);
 		Set<Role> roles = generateUserRole(signUpRequest);
 		user.setRoles(roles);
+		Role adminRole = roleRepository.findByName(ERole.ROLE_ADMIN)
+				.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
+
+		if (roles.contains(adminRole)){
+			user.setUsername("admin");
+		}
 		User savedUser = userRepository.save(user);
-		return ResponseEntity.ok(savedUser);
+		return this.userService.authenticate(new LoginRequest(signUpRequest.getEmail(),signUpRequest.getPassword()));
 	}
-	
 
 	private Set<Role> generateUserRole(SignupRequest signUpRequest) {
 		return this.userService.generateUserRole(signUpRequest);

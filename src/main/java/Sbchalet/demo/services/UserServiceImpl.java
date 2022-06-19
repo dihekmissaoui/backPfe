@@ -1,18 +1,32 @@
 package Sbchalet.demo.services;
 
 import java.util.HashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import Sbchalet.demo.exception.UserNotFoundException;
 import Sbchalet.demo.models.ERole;
 import Sbchalet.demo.models.Role;
 import Sbchalet.demo.models.User;
+import Sbchalet.demo.payload.request.LoginRequest;
 import Sbchalet.demo.payload.request.SignupRequest;
+import Sbchalet.demo.payload.response.JwtResponse;
 import Sbchalet.demo.repository.RoleRepository;
 import Sbchalet.demo.repository.UserRepository;
+import Sbchalet.demo.security.jwt.JwtUtils;
 @Service
 public class UserServiceImpl implements IUserservice {
 	
@@ -23,7 +37,11 @@ public class UserServiceImpl implements IUserservice {
 	@Autowired
 	PasswordEncoder encoder;
 	
-	
+	@Autowired
+	AuthenticationManager authenticationManager;
+	@Autowired
+	JwtUtils jwtUtils;
+
 
 	@Override
 	public User saveUser(SignupRequest request) {
@@ -93,5 +111,30 @@ public class UserServiceImpl implements IUserservice {
 			message = "Error: Email is already in use!";
 		}
 		return message;
+	}
+
+	@Override
+	public ResponseEntity<?> authenticate(@Valid LoginRequest loginRequest) {
+		Optional<User> optionalUser = userRepository.findByEmail(loginRequest.getEmail());
+		if (!optionalUser.isPresent()) {
+			throw new UserNotFoundException("Not Found");
+		}
+
+		User user = optionalUser.get();
+
+		Authentication authentication = authenticationManager
+				.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), loginRequest.getPassword()));
+
+		SecurityContextHolder.getContext().setAuthentication(authentication);
+
+		String jwt = jwtUtils.generateJwtToken(authentication);
+
+		UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
+
+		List<String> roles = userDetails.getAuthorities().stream().map(item -> item.getAuthority())
+				.collect(Collectors.toList());
+
+		return ResponseEntity.ok(
+				new JwtResponse(jwt, userDetails.getId(), userDetails.getUsername(), userDetails.getEmail(), roles));
 	}
 }

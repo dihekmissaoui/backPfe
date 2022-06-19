@@ -80,11 +80,11 @@ public class User {
 	}
 
 	public String getUsername() {
-		return nom;
+		return username;
 	}
 
 	public void setUsername(String username) {
-		this.nom = username;
+		this.username = username;
 	}
 
 	public String getEmail() {

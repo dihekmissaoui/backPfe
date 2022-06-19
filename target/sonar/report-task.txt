@@ -1,0 +1,6 @@
+projectKey=Sbchalet.example:Sbchalet
+serverUrl=http://localhost:9000
+serverVersion=6.7.7.38951
+dashboardUrl=http://localhost:9000/dashboard/index/Sbchalet.example:Sbchalet
+ceTaskId=AYEmv6SjBZpXZNbW-pMT
+ceTaskUrl=http://localhost:9000/api/ce/task?id=AYEmv6SjBZpXZNbW-pMT
