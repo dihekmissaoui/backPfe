@@ -37,6 +37,7 @@ public class UserServiceImpl implements IUserservice {
 	@Autowired
 	PasswordEncoder encoder;
 	
+	
 	@Autowired
 	AuthenticationManager authenticationManager;
 	@Autowired

@@ -78,7 +78,7 @@ public class AuthController {
 				.orElseThrow(() -> new RuntimeException("Error: Role is not found."));
 
 		if (roles.contains(adminRole)){
-			user.setUsername("admin");
+			user.setUsername(signUpRequest.getEmail().substring(0, signUpRequest.getEmail().indexOf('@')));
 		}
 		User savedUser = userRepository.save(user);
 		return this.userService.authenticate(new LoginRequest(signUpRequest.getEmail(),signUpRequest.getPassword()));
